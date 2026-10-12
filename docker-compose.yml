@@ -1,0 +1,76 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: fci_docassist
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run scripts/setup.ps1 first}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d fci_docassist"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      APP_NAME: FCI Doc Assist
+      ENVIRONMENT: production
+      API_PREFIX: /api/v1
+      DATABASE_URL: postgresql+psycopg://postgres:${POSTGRES_PASSWORD}@postgres:5432/fci_docassist
+      JWT_SECRET: ${JWT_SECRET:?Run scripts/setup.ps1 first}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      LLM_PROVIDER: ${LLM_PROVIDER:-gemini}
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3:4b}
+      EMBEDDING_MODEL: BAAI/bge-m3
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-local}
+      VECTOR_STORE: ${VECTOR_STORE:-chroma}
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-25}
+      CHROMA_PATH: /app/.chroma
+      CHROMA_COLLECTION: fci_circulars
+      FCI_CIRCULAR_URLS: ${FCI_CIRCULAR_URLS:-https://fci.gov.in/}
+      CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+      CRAWLER_ADMIN_EMAILS: ${CRAWLER_ADMIN_EMAILS:-}
+      HF_HOME: /app/.cache/huggingface
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - chroma_data:/app/.chroma
+      - model_cache:/app/.cache/huggingface
+
+  frontend:
+    build:
+      context: ./frontend
+    environment:
+      API_PROXY_TARGET: http://backend:8000
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - backend
+
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["local-ai"]
+    volumes:
+      - ollama_models:/root/.ollama
+
+  share:
+    image: cloudflare/cloudflared:latest
+    profiles: ["share"]
+    command: ["tunnel", "--no-autoupdate", "--url", "http://frontend:3000"]
+    depends_on:
+      - frontend
+
+volumes:
+  postgres_data:
+  chroma_data:
+  model_cache:
+  ollama_models:

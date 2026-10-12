@@ -1,0 +1,51 @@
+services:
+  - type: web
+    name: fci-doc-assist-api
+    runtime: docker
+    plan: free
+    rootDir: backend
+    dockerfilePath: ./Dockerfile.cloud
+    dockerContext: .
+    healthCheckPath: /api/v1/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+      - key: GEMINI_EMBEDDING_MODEL
+        value: gemini-embedding-001
+      - key: EMBEDDING_PROVIDER
+        value: gemini
+      - key: VECTOR_STORE
+        value: postgres
+      - key: LLM_PROVIDER
+        value: gemini
+      - key: MAX_UPLOAD_MB
+        value: "5"
+      - key: MAX_PDF_PAGES
+        value: "100"
+      - key: MAX_DOCUMENT_CHUNKS
+        value: "300"
+      - key: MAX_STORED_CHUNKS
+        value: "20000"
+      - key: CRAWLER_MAX_PAGES
+        value: "2"
+      - key: CRAWLER_MAX_DOCUMENTS_PER_RUN
+        value: "5"
+      - key: SCHEDULER_ENABLED
+        value: "false"
+      - key: CRAWL_ON_START
+        value: "false"
+      - key: CRAWLER_ADMIN_EMAILS
+        value: svarsha.t@gmail.com
+      - key: CRAWLER_JOB_TOKEN
+        generateValue: true
+      - key: FCI_CIRCULAR_URLS
+        value: https://fci.gov.in/circular

@@ -1,0 +1,6 @@
+name = "fci-doc-assist"
+pages_build_output_dir = "./out"
+compatibility_date = "2026-10-12"
+
+# Set API_PROXY_TARGET as an encrypted runtime variable (secret) in Pages settings.
+# Never put Gemini keys, database URLs or JWT secrets in this project.

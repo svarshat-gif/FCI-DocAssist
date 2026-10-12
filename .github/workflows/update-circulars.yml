@@ -1,0 +1,37 @@
+name: Update FCI Circulars
+on:
+  schedule:
+    - cron: "47 20 * * *"
+  workflow_dispatch:
+permissions: {}
+concurrency:
+  group: circular-update
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Run daily update
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+          CRAWLER_JOB_TOKEN: ${{ secrets.CRAWLER_JOB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "$BACKEND_URL" ] || [ -z "$CRAWLER_JOB_TOKEN" ]; then
+            echo "Set BACKEND_URL and CRAWLER_JOB_TOKEN repository secrets."
+            exit 1
+          fi
+          case "$BACKEND_URL" in https://*) ;; *) echo "BACKEND_URL must use HTTPS."; exit 1 ;; esac
+          curl --fail --silent --show-error --max-time 600 \
+            --request POST --header "Authorization: Bearer $CRAWLER_JOB_TOKEN" \
+            --output result.json "$BACKEND_URL/api/v1/maintenance/update"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          result = json.loads(Path("result.json").read_text())
+          print(f"Discovered: {result['discovered']}; added: {result['indexed']}; skipped: {result['skipped']}")
+          if result.get("errors"):
+              print("Some documents could not be added. Review the backend logs.")
+              raise SystemExit(1)
+          PY

@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+  letter-spacing: 0 !important;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #f7faf8;
+  color: #1b1b1b;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.dark body {
+  background: #0e1310;
+  color: #f7faf8;
+}
+
+::selection {
+  background: rgba(30, 125, 50, 0.18);
+}
+
+.surface-grid {
+  background-image:
+    linear-gradient(rgba(30, 125, 50, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(30, 125, 50, 0.08) 1px, transparent 1px);
+  background-size: 42px 42px;
+}
+
+.hero-paper {
+  background-color: #f9f9f6;
+  background-image: url("/paper-grain.png");
+  background-repeat: repeat;
+  background-size: 512px 512px;
+  color-scheme: light;
+}
+
+.markdown-body table {
+  width: 100%;
+  border-collapse: collapse;
+  display: block;
+  overflow-x: auto;
+  font-size: 0.9rem;
+}
+
+.markdown-body th,
+.markdown-body td {
+  border: 1px solid rgba(69, 81, 95, 0.18);
+  padding: 0.65rem;
+  text-align: left;
+}
+
+.markdown-body pre {
+  overflow-x: auto;
+  border-radius: 8px;
+  background: #111827;
+  color: #f9fafb;
+  padding: 1rem;
+}
+
+.markdown-body code {
+  font-size: 0.9em;
+}
+
+.markdown-body {
+  overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
