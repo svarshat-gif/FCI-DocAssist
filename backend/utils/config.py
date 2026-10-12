@@ -31,11 +31,12 @@ class Settings(BaseSettings):
     embedding_batch_size: int = Field(default=8, ge=1, le=32)
     vector_store: Literal["chroma", "postgres"] = "chroma"
     max_stored_chunks: int = Field(default=20000, ge=100, le=100000)
+    database_storage_limit_mb: int = Field(default=800, ge=100, le=900)
     retrieval_max_distance: float = Field(default=0.65, ge=0, le=2)
 
     chroma_path: str = "./.chroma"
     chroma_collection: str = "fci_circulars"
-    temp_upload_ttl_minutes: int = 60
+    temp_upload_ttl_minutes: int = Field(default=60, ge=1, le=60)
     max_upload_mb: int = 25
     max_pdf_pages: int = Field(default=100, ge=1, le=1000)
     max_document_chunks: int = Field(default=300, ge=1, le=5000)

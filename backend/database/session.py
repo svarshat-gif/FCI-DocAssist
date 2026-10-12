@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import NullPool
 
 from utils.config import get_settings
+from database import storage  # noqa: F401
 
 settings = get_settings()
 

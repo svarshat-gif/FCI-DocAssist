@@ -15,30 +15,29 @@ _scheduler: BackgroundScheduler | None = None
 def start_scheduler() -> None:
     global _scheduler
     settings = get_settings()
-    if not settings.scheduler_enabled:
-        logger.info("Scheduler disabled by configuration.")
-        return
     if _scheduler and _scheduler.running:
         return
 
     _scheduler = BackgroundScheduler(timezone="Asia/Kolkata")
-    _scheduler.add_job(
-        run_crawler_job,
-        trigger="cron",
-        hour=settings.crawler_daily_cron_hour,
-        id="daily_fci_crawler",
-        replace_existing=True,
-        max_instances=1,
-    )
+    if settings.scheduler_enabled:
+        _scheduler.add_job(
+            run_crawler_job,
+            trigger="cron",
+            hour=settings.crawler_daily_cron_hour,
+            id="daily_fci_crawler",
+            replace_existing=True,
+            max_instances=1,
+        )
     _scheduler.add_job(
         cleanup_uploads_job,
         trigger="interval",
-        minutes=15,
+        minutes=5,
         id="cleanup_temp_uploads",
         replace_existing=True,
         max_instances=1,
     )
-    if settings.crawl_on_start:
+    _scheduler.add_job(cleanup_uploads_job, trigger="date", id="initial_upload_cleanup")
+    if settings.scheduler_enabled and settings.crawl_on_start:
         _scheduler.add_job(run_crawler_job, trigger="date", run_date=datetime.now(timezone.utc), id="initial_fci_crawler")
     _scheduler.start()
     logger.info("Scheduler started.")

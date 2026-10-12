@@ -14,11 +14,19 @@ router = APIRouter(prefix="/maintenance", tags=["maintenance"])
 bearer = HTTPBearer(auto_error=False)
 
 
-@router.post("/update", response_model=CrawlerRunResponse)
-def update(db: DbSession, credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer)]):
+def authorize(credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer)]):
     token = get_settings().crawler_job_token
     if not token or len(token) < 32 or not credentials or not secrets.compare_digest(token, credentials.credentials):
         raise HTTPException(status_code=401, detail="Not authorized.")
+
+
+@router.post("/cleanup", dependencies=[Depends(authorize)])
+def cleanup(db: DbSession) -> dict[str, int]:
+    return {"deleted_uploads": UploadService(db).cleanup_expired()}
+
+
+@router.post("/update", response_model=CrawlerRunResponse, dependencies=[Depends(authorize)])
+def update(db: DbSession):
     UploadService(db).cleanup_expired()
     try:
         result = FciCrawler(db).run()

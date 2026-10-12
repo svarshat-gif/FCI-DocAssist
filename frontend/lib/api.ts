@@ -146,7 +146,7 @@ export const api = {
     });
   },
   uploadSession: (id: string, token?: string | null) => request<UploadSession>(`/uploads/${id}`, { token }),
-  deleteUpload: (id: string, token?: string | null) => request<void>(`/uploads/${id}`, { method: "DELETE", token }),
+  deleteUpload: (id: string, token?: string | null) => request<void>(`/uploads/${encodeURIComponent(id)}`, { method: "DELETE", token, keepalive: true }),
   bookmarks: (token?: string | null) => request<Circular[]>("/circulars/bookmarks", { token }),
   bookmark: (id: string, saved: boolean, token?: string | null) => request<void>(`/circulars/${id}/bookmark`, { method: saved ? "POST" : "DELETE", token }),
   crawl: (token?: string | null) => request<{ discovered: number; indexed: number; skipped: number; errors: string[] }>("/circulars/crawl", { method: "POST", token }),

@@ -17,7 +17,6 @@ class UploadService:
     def __init__(self, db: Session) -> None:
         self.db = db
         self.settings = get_settings()
-        self.embedder = get_embedder()
         self.vector_store = get_vector_store(db)
 
     def create_session(
@@ -25,6 +24,7 @@ class UploadService:
         file: UploadFile,
         user: User | None = None,
     ) -> UploadSession:
+        self.cleanup_expired()
         filename = _sanitize_filename(file.filename or "uploaded.pdf")
         if not filename.lower().endswith(".pdf"):
             raise HTTPException(
@@ -59,7 +59,7 @@ class UploadService:
             )
 
         collection_name = f"upload_{secrets.token_urlsafe(12).replace('-', '_')}"
-        embeddings = self.embedder.embed_documents([chunk.text for chunk in chunks])
+        embeddings = get_embedder().embed_documents([chunk.text for chunk in chunks])
         expires_at = datetime.now(timezone.utc) + timedelta(minutes=self.settings.temp_upload_ttl_minutes)
         self.vector_store.upsert_temp_chunks(collection_name, filename, chunks, embeddings, expires_at=expires_at)
 
@@ -100,6 +100,13 @@ class UploadService:
             )
         self.vector_store.delete_collection(session.collection_name)
         self.db.delete(session)
+        self.db.commit()
+
+    def delete_user_sessions(self, user: User) -> None:
+        sessions = self.db.query(UploadSession).filter(UploadSession.user_id == user.id).all()
+        for session in sessions:
+            self.vector_store.delete_collection(session.collection_name)
+            self.db.delete(session)
         self.db.commit()
 
 

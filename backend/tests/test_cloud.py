@@ -128,3 +128,67 @@ def test_bounded_chunking_preserves_long_words():
 def test_neon_url_uses_psycopg_and_preserves_ssl():
     settings = cloud_settings(database_url="postgresql://user:password@host/db?sslmode=require")
     assert settings.database_url == "postgresql+psycopg://user:password@host/db?sslmode=require"
+
+
+def test_database_headroom_guard():
+    from database.storage import check_storage
+    connection = MagicMock()
+    connection.dialect.name = "postgresql"
+    connection.scalar.return_value = 800 * 1024 * 1024
+    with pytest.raises(HTTPException) as error:
+        check_storage(connection, 800)
+    assert error.value.status_code == 507
+    assert "pg_advisory_xact_lock" in str(connection.execute.call_args.args[0])
+    connection.scalar.return_value = 100 * 1024 * 1024
+    check_storage(connection, 800)
+
+
+def test_upload_deletion_preserves_chat_and_other_accounts(db, users, monkeypatch):
+    from models.circular import UploadSession
+    from models.conversation import Conversation, Message
+    from services.upload_service import UploadService
+    from services import upload_service
+    from rag.postgres_store import PostgresVectorStore
+    settings = cloud_settings()
+    monkeypatch.setattr(upload_service, "get_vector_store", lambda session: PostgresVectorStore(session))
+    first, second = users
+    expiry = datetime.now(timezone.utc) + timedelta(hours=1)
+    sessions = [UploadSession(user_id=user.id, filename="private.pdf", collection_name=f"upload_{index}", expires_at=expiry) for index, user in enumerate(users)]
+    db.add_all(sessions)
+    db.commit()
+    store = PostgresVectorStore(db)
+    for session in sessions:
+        store.upsert_temp_chunks(session.collection_name, session.filename, [TextChunk("Private text", 1, 2)], [[1.0] * 768], expiry)
+    chat = Conversation(user_id=first.id, title="Saved PDF conversation", source_mode="upload", upload_session_id=sessions[0].id)
+    db.add(chat)
+    db.flush()
+    db.add(Message(conversation_id=chat.id, role="user", content="Keep my history"))
+    db.commit()
+    service = UploadService(db)
+    with pytest.raises(HTTPException):
+        service.delete_session(sessions[0].id, second)
+    first_id = sessions[0].id
+    service.delete_session(first_id, first)
+    service.delete_session(first_id, first)
+    assert db.get(UploadSession, first_id) is None
+    assert store.count("upload_0") == 0
+    assert store.count("upload_1") == 1
+    assert db.get(Conversation, chat.id) is not None
+    assert db.scalar(select(Message)).content == "Keep my history"
+    sessions[1].expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+    db.commit()
+    assert service.cleanup_expired() == 1
+    assert store.count("upload_1") == 0
+
+
+def test_cleanup_authorization_and_no_crawler(client, monkeypatch):
+    from routers import maintenance
+    monkeypatch.setattr(maintenance, "get_settings", lambda: cloud_settings(crawler_job_token="a" * 40))
+    service = MagicMock()
+    service.cleanup_expired.return_value = 2
+    monkeypatch.setattr(maintenance, "UploadService", lambda _: service)
+    assert client.post("/api/v1/maintenance/cleanup").status_code == 401
+    service.cleanup_expired.assert_not_called()
+    result = client.post("/api/v1/maintenance/cleanup", headers={"Authorization": "Bearer " + "a" * 40})
+    assert result.status_code == 200
+    assert result.json() == {"deleted_uploads": 2}

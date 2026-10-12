@@ -30,6 +30,8 @@ services:
         value: gemini
       - key: MAX_UPLOAD_MB
         value: "5"
+      - key: DATABASE_STORAGE_LIMIT_MB
+        value: "800"
       - key: MAX_PDF_PAGES
         value: "100"
       - key: MAX_DOCUMENT_CHUNKS

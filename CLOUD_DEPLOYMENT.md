@@ -129,9 +129,15 @@ repositories have an Actions minutes quota; check the free account allowance.
 
 Uploaded PDF bytes are processed transiently, not retained as permanent files.
 Search access expires after 60 minutes. Expired search data is excluded immediately;
-physical deletion happens during the next maintenance update (normally daily)
-or an explicit delete. Saved chats and cited snippets remain until the user deletes
-the conversation. Google may retain submitted text under its own free-tier terms.
+physical deletion follows the cleanup paths below. The app requests deletion when a PDF chat is ended,
+replaced, switched away from, signed out of, or its page is closed. Page-close
+requests are best effort: disconnected devices cannot guarantee immediate deletion.
+Expired data is also removed on startup, every five minutes while the backend is
+awake, before new uploads, and by the hourly `Remove Expired Uploads` workflow.
+GitHub schedules may be delayed or disabled, so this is not a precise deletion SLA.
+Saved chats and cited snippets remain until the user clears history; clearing history
+also deletes that user's remaining temporary uploads. Google may retain submitted
+text under its own free-tier terms.
 Every upload requires a separate Google-processing consent checkbox. Do not upload
 confidential employee information or other restricted documents.
 
@@ -143,7 +149,12 @@ confidential employee information or other restricted documents.
   method, exceeding eligible allowances suspends service/builds rather than charging.
 - [Neon Free](https://neon.com/blog/neon-free-plan-1-gb-per-project): currently 1 GB
   storage and 100 CU-hours per project/month. Chat history also uses this space;
-  the app's document cap is not a guarantee that every database stays below quota.
+  new app writes pause at an 800 MiB database-size ceiling, with extra room below
+  1 GB. Reads and deletion still work. This conservative guard covers saved chats,
+  accounts, documents and indexes, not only PDFs. Deleted database pages may remain
+  allocated for reuse; the app does not run disruptive full-database compaction.
+  Provider backups/history and writes made outside the app are not controlled by
+  this guard. No finite free database can promise unlimited chat history.
 - [Cloudflare Free](https://developers.cloudflare.com/workers/platform/pricing/):
   static files and API-function requests have different limits; Functions use
   the Workers free request allowance. Do not enable paid Workers.

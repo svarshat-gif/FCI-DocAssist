@@ -132,6 +132,8 @@ class ChatService:
     def clear_history(self, user: User | None) -> int:
         if not user:
             return 0
+        from services.upload_service import UploadService
+        UploadService(self.db).delete_user_sessions(user)
         conversations = list(self.db.scalars(select(Conversation).where(Conversation.user_id == user.id)).all())
         count = len(conversations)
         for conversation in conversations:

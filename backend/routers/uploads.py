@@ -33,7 +33,10 @@ def upload_pdf(
     settings = get_settings()
     if (settings.embedding_provider == "gemini" or settings.llm_provider == "gemini") and not allow_google_processing:
         raise HTTPException(status_code=400, detail="Please consent to Google processing the document before uploading.")
-    return UploadService(db).create_session(file, user)
+    try:
+        return UploadService(db).create_session(file, user)
+    finally:
+        file.file.close()
 
 
 @router.delete("/{session_id}", status_code=status.HTTP_204_NO_CONTENT)

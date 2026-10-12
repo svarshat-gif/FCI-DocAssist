@@ -69,6 +69,18 @@ export function ChatShell() {
   const preferencesReady = useRef(false);
 
   useEffect(() => {
+    if (!uploadSession || !token) return;
+    const release = () => { void api.deleteUpload(uploadSession.id, token).catch(() => undefined); };
+    const expire = window.setTimeout(() => setUploadSession(null), Math.max(0, new Date(uploadSession.expires_at).getTime() - Date.now()));
+    window.addEventListener("pagehide", release);
+    return () => {
+      window.clearTimeout(expire);
+      window.removeEventListener("pagehide", release);
+      release();
+    };
+  }, [uploadSession, token]);
+
+  useEffect(() => {
     setConversationId(undefined);
     setMessages([]);
     setUploadSession(null);
@@ -257,7 +269,7 @@ export function ChatShell() {
   }, [searchParams, sendMessage, authLoading]);
 
   const selectConversation = useCallback(async (id: string) => {
-    if (requestActive.current) return;
+    if (requestActive.current || id === conversationId) return;
     restoredChat.current = id;
     requestActive.current = true;
     setLoading(true);
@@ -280,7 +292,7 @@ export function ChatShell() {
       router.replace(`/chat?conversation=${encodeURIComponent(id)}`, { scroll: false });
     } catch (caught) { setError(caught instanceof Error ? caught.message : "Unable to load conversation."); }
     finally { requestActive.current = false; setLoading(false); }
-  }, [token, router]);
+  }, [token, router, conversationId]);
 
   useEffect(() => {
     const id = searchParams.get("conversation");
@@ -434,6 +446,11 @@ export function ChatShell() {
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
+            {uploadSession ? (
+              <Button type="button" variant="secondary" size="icon" disabled={loading} aria-label="End PDF chat" title="End PDF chat" onClick={newChat}>
+                <X className="h-4 w-4" aria-hidden="true" />
+              </Button>
+            ) : null}
             <div className="hidden sm:block">
               <LanguageSelector value={language} onChange={setLanguage} compact />
             </div>
