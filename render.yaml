@@ -3,6 +3,7 @@ services:
     name: fci-doc-assist-api
     runtime: docker
     plan: free
+    region: singapore
     rootDir: backend
     dockerfilePath: ./Dockerfile.cloud
     dockerContext: .

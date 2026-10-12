@@ -64,6 +64,10 @@ PostgreSQL instance or paid persistent disk. Supply `DATABASE_URL` and
 `GEMINI_API_KEY` using Render's secret environment settings. Render generates
 the JWT and scheduled-job secrets. Keep these secrets stable across redeploys.
 
+The blueprint selects Singapore for a new backend service, matching the recommended
+Neon region. Region is selected per service, not per Render account. An existing
+service cannot change region in place; create a new service if relocation is needed.
+
 The blueprint selects `backend/Dockerfile.cloud`, PostgreSQL document search,
 5 MB uploads, 100 PDF pages, at most 300 text sections per document, 20,000 stored
 sections, and at most five newly added circular PDFs per update. It scans the
